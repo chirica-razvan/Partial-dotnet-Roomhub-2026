@@ -1,22 +1,32 @@
-using RoomHub.Api.Common;
+using System.Text.Json.Serialization;
+using RoomHub.Api.Common.Cqrs;
+using RoomHub.Api.Domain.Bookings;
+using RoomHub.Api.Domain.Rooms;
 using RoomHub.Api.Features.Bookings;
-using RoomHub.Api.Features.Bookings.CancelBooking;
-using RoomHub.Api.Features.Bookings.CreateBooking;
 using RoomHub.Api.Features.Rooms;
-using RoomHub.Api.Features.Rooms.CreateRoom;
 using RoomHub.Api.Infrastructure.Persistence.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<RoomRepository>();
-builder.Services.AddSingleton<BookingRepository>();
-builder.Services.AddScoped<CreateRoomHandler>();
-builder.Services.AddScoped<CreateBookingHandler>();
-builder.Services.AddScoped<CancelBookingHandler>();
+// Enums travel in JSON as text ("Active"), not as numbers.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Any unexpected error also comes out as ProblemDetails (500), without a stack trace for the client.
+builder.Services.AddProblemDetails();
+
+builder.Services.AddSingleton(TimeProvider.System);
+
+// shortcut: Singleton because the data is in memory; becomes Scoped with EF Core (level C).
+builder.Services.AddSingleton<IRoomRepository, RoomRepository>();
+builder.Services.AddSingleton<IBookingRepository, BookingRepository>();
+
+builder.Services.AddHandlers(typeof(Program).Assembly);
 
 var app = builder.Build();
 
-app.UseMiddleware<ExceptionMiddleware>();
+app.UseExceptionHandler(); // exceptions -> 500 ProblemDetails
+app.UseStatusCodePages();  // unknown route -> 404 ProblemDetails
 
 app.MapGet("/", () => "RoomHub API is running.");
 app.MapRooms();
