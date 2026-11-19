@@ -4,6 +4,8 @@ using RoomHub.Api.Domain.Bookings;
 using RoomHub.Api.Domain.Rooms;
 using RoomHub.Api.Features.Bookings;
 using RoomHub.Api.Features.Rooms;
+using Microsoft.EntityFrameworkCore;
+using RoomHub.Api.Infrastructure.Persistence;
 using RoomHub.Api.Infrastructure.Persistence.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddProblemDetails();
 
 builder.Services.AddSingleton(TimeProvider.System);
+
+// The DbContext is Scoped: a new instance per HTTP request.
+builder.Services.AddDbContext<RoomHubDbContext>((serviceProvider, options) =>
+    options.UseSqlite(serviceProvider
+        .GetRequiredService<IConfiguration>()
+        .GetConnectionString("RoomHub")));
 
 // shortcut: Singleton because the data is in memory; becomes Scoped with EF Core (level C).
 builder.Services.AddSingleton<IRoomRepository, RoomRepository>();
