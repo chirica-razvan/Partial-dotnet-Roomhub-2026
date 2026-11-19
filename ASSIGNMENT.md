@@ -59,6 +59,11 @@ When the room does not exist, 404 is returned before any validation.
   active booking on the same day, for the same `bookedBy`, is rejected with 409. Cancelled bookings
   do not count. Bookings on different days do not affect each other.
   The rule must live in the domain/handler, not in the endpoint. The repository may get a new method.
+- **R10.** (new requirement) Rooms with a capacity greater than 10 can be booked for at most 2 hours
+  (exactly 2 hours is allowed). A longer booking is rejected with 400. Rooms with capacity 10 or less
+  keep the 4-hour limit from R6.
+- **R11.** (new requirement) A booking can be cancelled only if it starts at least 60 minutes from now
+  (current time from `TimeProvider`). Otherwise the cancel request is rejected with 409.
 
 ---
 
