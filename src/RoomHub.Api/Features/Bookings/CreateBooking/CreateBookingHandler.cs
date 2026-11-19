@@ -17,6 +17,7 @@ public sealed record CreateBookingResult(Guid Id, Guid RoomId, BookingStatus Sta
 public sealed class CreateBookingHandler(
     IRoomRepository rooms,
     IBookingRepository bookings,
+    IUnitOfWork unitOfWork,
     TimeProvider time)
     : ICommandHandler<CreateBookingCommand, CreateBookingResult>
 {
@@ -53,6 +54,8 @@ public sealed class CreateBookingHandler(
             return BookingErrors.DailyLimitReached;
 
         bookings.Add(booking);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
         return new CreateBookingResult(booking.Id, booking.RoomId, booking.Status);
     }
 }

@@ -1,44 +1,32 @@
+using Microsoft.EntityFrameworkCore;
 using RoomHub.Api.Domain.Bookings;
 
 namespace RoomHub.Api.Infrastructure.Persistence.Repositories;
 
-// shortcut: in-memory data, lost on restart; replaced by EF Core + SQLite at level C.
-public sealed class BookingRepository : IBookingRepository
+public sealed class BookingRepository(RoomHubDbContext db) : IBookingRepository
 {
-    private readonly List<Booking> _bookings = [];
-    private readonly Lock _lock = new();
+    public async Task<Booking?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        await db.Bookings.FindAsync([id], cancellationToken);
 
-    public Task<Booking?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-    {
-        lock (_lock)
-            return Task.FromResult(_bookings.FirstOrDefault(b => b.Id == id));
-    }
-
-    public Task<IReadOnlyList<Booking>> ListActiveForRoomAsync(Guid roomId, CancellationToken cancellationToken)
-    {
-        lock (_lock)
-        {
-            IReadOnlyList<Booking> result = _bookings
-                .Where(b => b.RoomId == roomId && b.Status == BookingStatus.Active)
-                .ToList();
-            return Task.FromResult(result);
-        }
-    }
+    public async Task<IReadOnlyList<Booking>> ListActiveForRoomAsync(Guid roomId, CancellationToken cancellationToken) =>
+        await db.Bookings
+            .Where(b => b.RoomId == roomId && b.Status == BookingStatus.Active)
+            .ToListAsync(cancellationToken);
 
     public Task<int> CountActiveForPersonOnDayAsync(string bookedBy, DateTime dayUtc, CancellationToken cancellationToken)
     {
-        lock (_lock)
-        {
-            return Task.FromResult(_bookings.Count(b =>
-                b.Status == BookingStatus.Active
+        // A [day, next day) range instead of StartUtc.Date, so the filter stays plain SQL.
+        var dayStart = DateTime.SpecifyKind(dayUtc.Date, DateTimeKind.Utc);
+        var dayEnd = dayStart.AddDays(1);
+
+        return db.Bookings.CountAsync(
+            b => b.Status == BookingStatus.Active
                 && b.BookedBy == bookedBy
-                && b.StartUtc.Date == dayUtc.Date));
-        }
+                && b.StartUtc >= dayStart
+                && b.StartUtc < dayEnd,
+            cancellationToken);
     }
 
-    public void Add(Booking booking)
-    {
-        lock (_lock)
-            _bookings.Add(booking);
-    }
+    // Only marks the booking as Added; IUnitOfWork.SaveChangesAsync writes it.
+    public void Add(Booking booking) => db.Bookings.Add(booking);
 }

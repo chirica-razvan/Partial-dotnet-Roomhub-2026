@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using RoomHub.Api.Common.Cqrs;
 using RoomHub.Api.Domain.Bookings;
+using RoomHub.Api.Domain.Common;
 using RoomHub.Api.Domain.Rooms;
 using RoomHub.Api.Features.Bookings;
 using RoomHub.Api.Features.Rooms;
@@ -25,9 +26,11 @@ builder.Services.AddDbContext<RoomHubDbContext>((serviceProvider, options) =>
         .GetRequiredService<IConfiguration>()
         .GetConnectionString("RoomHub")));
 
-// shortcut: Singleton because the data is in memory; becomes Scoped with EF Core (level C).
-builder.Services.AddSingleton<IRoomRepository, RoomRepository>();
-builder.Services.AddSingleton<IBookingRepository, BookingRepository>();
+// The same DbContext for the Unit of Work and the repositories, within one request.
+builder.Services.AddScoped<IUnitOfWork>(serviceProvider =>
+    serviceProvider.GetRequiredService<RoomHubDbContext>());
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 builder.Services.AddHandlers(typeof(Program).Assembly);
 

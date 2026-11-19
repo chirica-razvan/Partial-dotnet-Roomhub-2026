@@ -7,3 +7,4 @@ Fill it in yourself, in your own words. There is no required number: what counts
 |---|---|---|---|
 | R5 | src/RoomHub.Api/Services/BookingService.cs | reading the files | injectat TimeProvider si facut un check pentru endUtc>GetUtcNow() si startUtc>GetUtcNow() |
 | R6 | src/RoomHub.Api/Services/BookingService.cs | reading the files | verificat ca endUtc-startUtc nu depaseste 4 ore |
+| R7 | src/Roomhub.Api/Servoces/BookingService.cs | reading | having strict < comparations instead of <= ones|
